@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="initial-scale=1.0">
+<title>Picker</title>
+<style>
+body {
+    background:#FFF;
+    color:#000;
+    font-family:verdana, sans-serif;
+    font-size:10pt;
+    margin:0;
+    padding:10px;
+}
+
+a:link, a:visited {
+    color:#008;
+    font-weight:bold;
+    text-decoration:none;
+}
+
+a:active, a:hover {
+    color:#ACF;
+}
+
+.info {
+    font-weight:bold;
+}
+
+button {
+    font-family:inherit;
+    cursor:pointer;
+    border:0;
+    border-radius:3px;
+    padding:0.3em 0.5em;
+    background:#CCC;
+    color:#000;
+}
+
+button:hover {
+    background:#DDD;
+}
+
+button.disabled {
+    background:#DDD;
+    color:#888;
+    cursor:not-allowed;
+}
+
+button.disabled:hover {
+    background:#DDD;
+}
+
+#container {
+    position:relative;
+    margin-left:-10px;
+    margin-right:-10px;
+    padding:10px;
+    overflow:hidden;
+}
+
+@media (min-width:1024px) {
+    /* Put the found favorites beside the picking div when the window is sufficiently large */
+    #picking {
+        float:left;
+        width:636px;
+    }
+
+    #secondary {
+        margin-left:646px;
+    }
+}
+
+@media (min-width:1300px) {
+    /* Once we get to the point where 636px is less than half of the width of the screen, make the picking div just take up half */
+    #picking {
+        width:50%;
+    }
+
+    #secondary {
+        margin-left:51%;
+    }
+}
+
+#pick {
+    background:#58F;
+    color:#FFF;
+    font-size:larger;
+    font-weight:bold;
+    width:6em;
+    border-radius:5px;
+    margin-right:10px;
+}
+
+#pick.disabled {
+    background:#ACF;
+}
+
+#pick:hover {
+    background:#ACF;
+}
+
+.item-list {
+    padding:0;
+    list-style-type:none;
+    line-height:100px;
+}
+
+.item-list li {
+    margin:0;
+    display:inline-block;
+    height:100px;
+    width:100px;
+    line-height:100px;
+    border:3px solid transparent;
+    text-align:center;
+    position:relative;
+    vertical-align:top;
+    overflow:hidden;
+    border-radius:100%;
+    background:#F7F7F7;
+    color:#000;
+}
+
+.item-list li img {
+    vertical-align:middle;
+    max-height:80%;
+    max-width:80%;
+}
+
+.item-list li span {
+    display:inline-block;
+    vertical-align:middle;
+    line-height:1.2;
+}
+
+@media (max-width:636px) {
+    .item-list {
+        line-height:75px;
+    }
+
+    .item-list li {
+        line-height:75px;
+        height:75px;
+        width:75px;
+    }
+}
+
+@media (max-width:423px) {
+    .item-list {
+        line-height:50px;
+    }
+
+    .item-list li {
+        line-height:50px;
+        height:50px;
+        width:50px;
+    }
+}
+
+#evaluating li {
+    cursor:pointer;
+}
+
+#favorites li {
+    cursor:move;
+}
+
+.item-list li:hover {
+    background:#CDF;
+}
+
+.item-list.sorting li:hover {
+    background:#F7F7F7;
+}
+
+#evaluating li.selected {
+    border:3px solid #7AC;
+}
+
+#evaluating, #buttons {
+    text-align:center;
+    margin:auto;
+}
+
+#evaluating li.notice {
+    width:auto;
+    height:auto;
+    max-width:260px;
+    margin:auto;
+    background:#F7F7F7;
+    border-radius:10px;
+    padding:30px 30px;
+    color:#000;
+    text-align:center;
+    line-height:1.4;
+    cursor:auto;
+    font-size:10pt;
+}
+
+#buttons {
+    margin-top:30px;
+    position:relative;
+    z-index:3;
+}
+</style>
+</head>
+<body>
+<h1>Favourite World Flag Picker</h1>
+
+<p>I'm not as smart as this might make me look, this is entirely based on this Favourite Pokemon Picker: </p><a href="https://www.dragonflycave.com/favorite.html">https://www.dragonflycave.com/favorite.html</a><br>
+<p>The creator of said Favourite Pokemon Picker were kind enough to make it open source on github for schlubs like me to play with and customize here: </p><a href="https://github.com/antialiasis/favorite-picker">https://github.com/antialiasis/favorite-picker</a><br>
+<p>Images for all the flags came from here: </p><a href="https://flagpedia.net/download/icons">https://flagpedia.net/download/icons</a>
+
+<div id="container">
+
+<div id="picking">
+<ul id="evaluating" class="item-list">
+</ul>
+
+<p id="buttons"><button id="pick">Pick</button> <button id="pass">Pass</button> <button id="undo">Undo</button> <button id="redo">Redo</button></p>
+</div>
+
+<div id="secondary">
+<h2>Found favorites</h2>
+
+<ol id="favorites" class="item-list">
+</ol>
+</div>
+</div>
+<script src="https://code.jquery.com/jquery-1.12.4.min.js"></script>
+<script src="js/picker.js"></script>
+<script src="js/picker-ui.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.7.0/Sortable.min.js"></script>
+<script>
+'use strict';
+
+var items = [
+    {id: 'ad', name: 'Andorra', image: 'flags/ad.png'},
+    {id: 'ae', name: 'United Arab Emirates', image: 'flags/ae.png'},
+    {id: 'af', name: 'Afghanistan', image: 'flags/af.png'},
+    {id: 'ag', name: 'Antigua and Barbuda', image: 'flags/ag.png'},
+    {id: 'ai', name: 'Anguilla', image: 'flags/ai.png'},
+    {id: 'al', name: 'Albania', image: 'flags/al.png'},
+    {id: 'am', name: 'Armenia', image: 'flags/am.png'},
+    {id: 'ao', name: 'Angola', image: 'flags/ao.png'},
+    {id: 'aq', name: 'Antarctica', image: 'flags/aq.png'},
+    {id: 'ar', name: 'Argentina', image: 'flags/ar.png'},
+    {id: 'as', name: 'American Samoa', image: 'flags/as.png'},
+    {id: 'at', name: 'Austria', image: 'flags/at.png'},
+    {id: 'au', name: 'Australia', image: 'flags/au.png'},
+    {id: 'aw', name: 'Aruba', image: 'flags/aw.png'},
+    {id: 'ax', name: 'Aland Islands', image: 'flags/ax.png'},
+    {id: 'az', name: 'Azerbaijan', image: 'flags/az.png'},
+    {id: 'ba', name: 'Bosnia and Herzegovina', image: 'flags/ba.png'},
+    {id: 'bb', name: 'Barbados', image: 'flags/bb.png'},
+    {id: 'bd', name: 'Bangladesh', image: 'flags/bd.png'},
+    {id: 'be', name: 'Belgium', image: 'flags/be.png'},
+    {id: 'bf', name: 'Burkina Faso', image: 'flags/bf.png'},
+    {id: 'bg', name: 'Bulgaria', image: 'flags/bg.png'},
+    {id: 'bh', name: 'Bahrain', image: 'flags/bh.png'},
+    {id: 'bi', name: 'Burundi', image: 'flags/bi.png'},
+    {id: 'bj', name: 'Benin', image: 'flags/bj.png'},
+    {id: 'bl', name: 'Saint Barthelemey', image: 'flags/bl.png'},
+    {id: 'bm', name: 'Bermuda', image: 'flags/bm.png'},
+    {id: 'bn', name: 'Brunei', image: 'flags/bn.png'},
+    {id: 'bo', name: 'Bolivia', image: 'flags/bo.png'},
+    {id: 'bq', name: 'Bonaire', image: 'flags/bq.png'},
+    {id: 'br', name: 'Brazil', image: 'flags/br.png'},
+    {id: 'bs', name: 'The Bahamas', image: 'flags/bs.png'},
+    {id: 'bt', name: 'Bhutan', image: 'flags/bt.png'},
+    {id: 'bv', name: 'Bouvet Island', image: 'flags/bv.png'},
+    {id: 'bw', name: 'Botswana', image: 'flags/bw.png'},
+    {id: 'by', name: 'Belarus', image: 'flags/by.png'},
+    {id: 'bz', name: 'Belize', image: 'flags/bz.png'},
+    {id: 'ca', name: 'Canada', image: 'flags/ca.png'},
+    {id: 'cc', name: 'Cocos Islands', image: 'flags/cc.png'},
+    {id: 'cd', name: 'Democratic Republic of the Congo', image: 'flags/cd.png'},
+    {id: 'cf', name: 'Central African Republic', image: 'flags/cf.png'},
+    {id: 'cg', name: 'Republic of the Congo', image: 'flags/cg.png'},
+    {id: 'ch', name: 'Switzerland', image: 'flags/ch.png'},
+    {id: 'ci', name: 'Ivory Coast', image: 'flags/ci.png'},
+    {id: 'ck', name: 'Cook Islands', image: 'flags/ck.png'},
+    {id: 'cl', name: 'Chile', image: 'flags/cl.png'},
+    {id: 'cm', name: 'Cameroon', image: 'flags/cm.png'},
+    {id: 'cn', name: 'China', image: 'flags/cn.png'},
+    {id: 'co', name: 'Colombia', image: 'flags/co.png'},
+    {id: 'cr', name: 'Costa Rica', image: 'flags/cr.png'},
+    {id: 'cu', name: 'Cuba', image: 'flags/cu.png'},
+    {id: 'cv', name: 'Cabo Verde', image: 'flags/cv.png'},
+    {id: 'cw', name: 'Curacao', image: 'flags/cw.png'},
+    {id: 'cx', name: 'Christmas Island', image: 'flags/cx.png'},
+    {id: 'cy', name: 'Cyprus', image: 'flags/cy.png'},
+    {id: 'cz', name: 'Czechia', image: 'flags/cz.png'},
+    {id: 'de', name: 'Germany', image: 'flags/de.png'},
+    {id: 'dj', name: 'Djibouti', image: 'flags/dj.png'},
+    {id: 'dk', name: 'Denmark', image: 'flags/dk.png'},
+    {id: 'dm', name: 'Dominica', image: 'flags/dm.png'},
+    {id: 'do', name: 'Dominican Republic', image: 'flags/do.png'},
+    {id: 'dz', name: 'Algeria', image: 'flags/dz.png'},
+    {id: 'ec', name: 'Ecuador', image: 'flags/ec.png'},
+    {id: 'ee', name: 'Estonia', image: 'flags/ee.png'},
+    {id: 'eg', name: 'Egypt', image: 'flags/eg.png'},
+    {id: 'eh', name: 'Western Sahara', image: 'flags/eh.png'},
+    {id: 'er', name: 'Eritrea', image: 'flags/er.png'},
+    {id: 'es', name: 'Spain', image: 'flags/es.png'},
+    {id: 'et', name: 'Ethiopia', image: 'flags/et.png'},
+    {id: 'fi', name: 'Finland', image: 'flags/fi.png'},
+    {id: 'fj', name: 'Fiji', image: 'flags/fj.png'},
+    {id: 'fk', name: 'Falkland Islands', image: 'flags/fk.png'},
+    {id: 'fm', name: 'Federated States of Micronesia', image: 'flags/fm.png'},
+    {id: 'fo', name: 'Faroe Islands', image: 'flags/fo.png'},
+    {id: 'fr', name: 'France', image: 'flags/fr.png'},
+    {id: 'ga', name: 'Gabon', image: 'flags/ga.png'},
+    {id: 'gb', name: 'United Kingdom', image: 'flags/gb.png'},
+    {id: 'gb-eng', name: 'England', image: 'flags/gb-eng.png'},
+    {id: 'gb-sct', name: 'Scotland', image: 'flags/gb-sct.png'},
+    {id: 'gb-wls', name: 'Wales', image: 'flags/gb-wls.png'},
+    {id: 'gb-nir', name: 'Northern Ireland', image: 'flags/gb-nir.png'},
+    {id: 'gd', name: 'Grenada', image: 'flags/gd.png'},
+    {id: 'ge', name: 'Georgia', image: 'flags/ge.png'},
+    {id: 'gf', name: 'French Guiana', image: 'flags/gf.png'},
+    {id: 'gg', name: 'Guernsey', image: 'flags/gg.png'},
+    {id: 'gh', name: 'Ghana', image: 'flags/gh.png'},
+    {id: 'gi', name: 'Gibraltar', image: 'flags/gi.png'},
+    {id: 'gl', name: 'Greenland', image: 'flags/gl.png'},
+    {id: 'gm', name: 'The Gambia', image: 'flags/gm.png'},
+    {id: 'gn', name: 'Guinea', image: 'flags/gn.png'},
+    {id: 'gp', name: 'Guadaloupe', image: 'flags/gp.png'},
+    {id: 'gq', name: 'Equatorial Guinea', image: 'flags/gq.png'},
+    {id: 'gr', name: 'Greece', image: 'flags/gr.png'},
+    {id: 'gs', name: 'South Georgia and the South Sandwich Islands', image: 'flags/gs.png'},
+    {id: 'gt', name: 'Guatemala', image: 'flags/gt.png'},
+    {id: 'gu', name: 'Guam', image: 'flags/gu.png'},
+    {id: 'gw', name: 'Guinea-Bissau', image: 'flags/gw.png'},
+    {id: 'gy', name: 'Guyana', image: 'flags/gy.png'},
+    {id: 'hk', name: 'Hong Kong', image: 'flags/hk.png'},
+    {id: 'hm', name: 'Heard Island and McDonald Islands', image: 'flags/hm.png'},
+    {id: 'hn', name: 'Honduras', image: 'flags/hn.png'},
+    {id: 'hr', name: 'Croatia', image: 'flags/hr.png'},
+    {id: 'ht', name: 'Haiti', image: 'flags/ht.png'},
+    {id: 'hu', name: 'Hungary', image: 'flags/hu.png'},
+    {id: 'id', name: 'Indonesia', image: 'flags/id.png'},
+    {id: 'ie', name: 'Ireland', image: 'flags/ie.png'},
+    {id: 'il', name: 'Israel', image: 'flags/il.png'},
+    {id: 'im', name: 'Isle of Man', image: 'flags/im.png'},
+    {id: 'in', name: 'India', image: 'flags/in.png'},
+    {id: 'io', name: 'British Indian Ocean Territory', image: 'flags/io.png'},
+    {id: 'iq', name: 'Iraq', image: 'flags/iq.png'},
+    {id: 'ir', name: 'Iran', image: 'flags/ir.png'},
+    {id: 'is', name: 'Iceland', image: 'flags/is.png'},
+    {id: 'it', name: 'Italy', image: 'flags/it.png'},
+    {id: 'je', name: 'Jersey', image: 'flags/je.png'},
+    {id: 'jm', name: 'Jamaica', image: 'flags/jm.png'},
+    {id: 'jo', name: 'Jordan', image: 'flags/jo.png'},
+    {id: 'jp', name: 'Japan', image: 'flags/jp.png'},
+    {id: 'ke', name: 'Kenya', image: 'flags/ke.png'},
+    {id: 'kg', name: 'Kyrgyzstan', image: 'flags/kg.png'},
+    {id: 'kh', name: 'Cambodia', image: 'flags/kh.png'},
+    {id: 'ki', name: 'Kiribati', image: 'flags/ki.png'},
+    {id: 'km', name: 'Comoros', image: 'flags/km.png'},
+    {id: 'kn', name: 'Saint Kitts and Nevis', image: 'flags/kn.png'},
+    {id: 'kp', name: 'North Korea', image: 'flags/kp.png'},
+    {id: 'kr', name: 'South Korea', image: 'flags/kr.png'},
+    {id: 'kw', name: 'Kuwait', image: 'flags/kw.png'},
+    {id: 'ky', name: 'Cayman Islands', image: 'flags/ky.png'},
+    {id: 'kz', name: 'Kazakhstan', image: 'flags/kz.png'},
+    {id: 'la', name: 'Laos', image: 'flags/la.png'},
+    {id: 'lb', name: 'Lebanon', image: 'flags/lb.png'},
+    {id: 'lc', name: 'Saint Lucia', image: 'flags/lc.png'},
+    {id: 'li', name: 'Liechtenstein', image: 'flags/li.png'},
+    {id: 'lk', name: 'Sri Lanka', image: 'flags/lk.png'},
+    {id: 'lr', name: 'Liberia', image: 'flags/lr.png'},
+    {id: 'ls', name: 'Lesotho', image: 'flags/ls.png'},
+    {id: 'lt', name: 'Lithuania', image: 'flags/lt.png'},
+    {id: 'lu', name: 'Luxembourg', image: 'flags/lu.png'},
+    {id: 'lv', name: 'Latvia', image: 'flags/lv.png'},
+    {id: 'ly', name: 'Libya', image: 'flags/ly.png'},
+    {id: 'ma', name: 'Morocco', image: 'flags/ma.png'},
+    {id: 'mc', name: 'Monaco', image: 'flags/mc.png'},
+    {id: 'md', name: 'Moldova', image: 'flags/md.png'},
+    {id: 'me', name: 'Montenegro', image: 'flags/me.png'},
+    {id: 'mf', name: 'Saint Martin (French Part)', image: 'flags/mf.png'},
+    {id: 'mg', name: 'Madagascar', image: 'flags/mg.png'},
+    {id: 'mh', name: 'Marshall Islands', image: 'flags/mh.png'},
+    {id: 'mk', name: 'Macedonia', image: 'flags/mk.png'},
+    {id: 'ml', name: 'Mali', image: 'flags/ml.png'},
+    {id: 'mm', name: 'Myanmar', image: 'flags/mm.png'},
+    {id: 'mn', name: 'Mongolia', image: 'flags/mn.png'},
+    {id: 'mo', name: 'Macao', image: 'flags/mo.png'},
+    {id: 'mp', name: 'Northern Mariana Islands', image: 'flags/mp.png'},
+    {id: 'mq', name: 'Martinique', image: 'flags/mq.png'},
+    {id: 'mr', name: 'Mauritania', image: 'flags/mr.png'},
+    {id: 'ms', name: 'Montserrat', image: 'flags/ms.png'},
+    {id: 'mt', name: 'Malta', image: 'flags/mt.png'},
+    {id: 'mu', name: 'Mauritius', image: 'flags/mu.png'},
+    {id: 'mv', name: 'Maldives', image: 'flags/mv.png'},
+    {id: 'mw', name: 'Malawi', image: 'flags/mw.png'},
+    {id: 'mx', name: 'Mexico', image: 'flags/mx.png'},
+    {id: 'my', name: 'Malaysia', image: 'flags/my.png'},
+    {id: 'mz', name: 'Mozambique', image: 'flags/mz.png'},
+    {id: 'na', name: 'Namibia', image: 'flags/na.png'},
+    {id: 'nc', name: 'New Caledonia', image: 'flags/nc.png'},
+    {id: 'ne', name: 'Niger', image: 'flags/ne.png'},
+    {id: 'nf', name: 'Norfolk Island', image: 'flags/nf.png'},
+    {id: 'ng', name: 'Nigeria', image: 'flags/ng.png'},
+    {id: 'ni', name: 'Nicaragua', image: 'flags/ni.png'},
+    {id: 'nl', name: 'Netherlands', image: 'flags/nl.png'},
+    {id: 'no', name: 'Norway', image: 'flags/no.png'},
+    {id: 'np', name: 'Nepal', image: 'flags/np.png'},
+    {id: 'nr', name: 'Nauru', image: 'flags/nr.png'},
+    {id: 'nu', name: 'Niue', image: 'flags/nu.png'},
+    {id: 'nz', name: 'New Zealand', image: 'flags/nz.png'},
+    {id: 'om', name: 'Oman', image: 'flags/om.png'},
+    {id: 'pa', name: 'Panama', image: 'flags/pa.png'},
+    {id: 'pe', name: 'Peru', image: 'flags/pe.png'},
+    {id: 'pf', name: 'French Polynesia', image: 'flags/pf.png'},
+    {id: 'pg', name: 'Papua New Guinea', image: 'flags/pg.png'},
+    {id: 'ph', name: 'Philippines', image: 'flags/ph.png'},
+    {id: 'pk', name: 'Pakistan', image: 'flags/pk.png'},
+    {id: 'pl', name: 'Poland', image: 'flags/pl.png'},
+    {id: 'pm', name: 'Saint Pierre and Miquelon', image: 'flags/pm.png'},
+    {id: 'pn', name: 'Pitcairn', image: 'flags/pn.png'},
+    {id: 'pr', name: 'Puerto Rico', image: 'flags/pr.png'},
+    {id: 'ps', name: 'Palestine', image: 'flags/ps.png'},
+    {id: 'pt', name: 'Portugal', image: 'flags/pt.png'},
+    {id: 'pw', name: 'Palau', image: 'flags/pw.png'},
+    {id: 'py', name: 'Paraguay', image: 'flags/py.png'},
+    {id: 'qa', name: 'Qatar', image: 'flags/qa.png'},
+    {id: 're', name: 'Reunion', image: 'flags/re.png'},
+    {id: 'ro', name: 'Romania', image: 'flags/ro.png'},
+    {id: 'rs', name: 'Serbia', image: 'flags/rs.png'},
+    {id: 'ru', name: 'Russia', image: 'flags/ru.png'},
+    {id: 'rw', name: 'Rwanda', image: 'flags/rw.png'},
+    {id: 'sa', name: 'Saudi Arabia', image: 'flags/sa.png'},
+    {id: 'sb', name: 'Solomon Islands', image: 'flags/sb.png'},
+    {id: 'sc', name: 'Seychelles', image: 'flags/sc.png'},
+    {id: 'sd', name: 'Sudan', image: 'flags/sd.png'},
+    {id: 'se', name: 'Sweden', image: 'flags/se.png'},
+    {id: 'sg', name: 'Singapore', image: 'flags/sg.png'},
+    {id: 'sh', name: 'Saint Helena, Ascension and Tristan da Cunha', image: 'flags/sh.png'},
+    {id: 'si', name: 'Slovenia', image: 'flags/si.png'},
+    {id: 'sj', name: 'Svalbard and Jan Mayen', image: 'flags/sj.png'},
+    {id: 'sk', name: 'Slovakia', image: 'flags/sk.png'},
+    {id: 'sl', name: 'Sierra Leone', image: 'flags/sl.png'},
+    {id: 'sm', name: 'San Marino', image: 'flags/sm.png'},
+    {id: 'sn', name: 'Senegal', image: 'flags/sn.png'},
+    {id: 'so', name: 'Somalia', image: 'flags/so.png'},
+    {id: 'sr', name: 'Suriname', image: 'flags/sr.png'},
+    {id: 'ss', name: 'South Sudan', image: 'flags/ss.png'},
+    {id: 'st', name: 'Sao Tome and Principe', image: 'flags/st.png'},
+    {id: 'sv', name: 'El Salvador', image: 'flags/sv.png'},
+    {id: 'sx', name: 'Sint Maarten (Dutch part)', image: 'flags/sx.png'},
+    {id: 'sy', name: 'Syria', image: 'flags/sy.png'},
+    {id: 'sz', name: 'Eswatini', image: 'flags/sz.png'},
+    {id: 'tc', name: 'Turks and Caicos Islands', image: 'flags/tc.png'},
+    {id: 'td', name: 'Chad', image: 'flags/td.png'},
+    {id: 'tf', name: 'French Southern Territories', image: 'flags/tf.png'},
+    {id: 'tg', name: 'Togo', image: 'flags/tg.png'},
+    {id: 'th', name: 'Thailand', image: 'flags/th.png'},
+    {id: 'tj', name: 'Tajikistan', image: 'flags/tj.png'},
+    {id: 'tk', name: 'Tokelau', image: 'flags/tk.png'},
+    {id: 'tl', name: 'Timor-Leste', image: 'flags/tl.png'},
+    {id: 'tm', name: 'Turkmenistan', image: 'flags/tm.png'},
+    {id: 'tn', name: 'Tunisia', image: 'flags/tn.png'},
+    {id: 'to', name: 'Tonga', image: 'flags/to.png'},
+    {id: 'tr', name: 'Turkey', image: 'flags/tr.png'},
+    {id: 'tt', name: 'Trinidad and Tobago', image: 'flags/tt.png'},
+    {id: 'tv', name: 'Tuvalu', image: 'flags/tv.png'},
+    {id: 'tw', name: 'Taiwan', image: 'flags/tw.png'},
+    {id: 'tz', name: 'Tanzania', image: 'flags/tz.png'},
+    {id: 'ua', name: 'Ukraine', image: 'flags/ua.png'},
+    {id: 'ug', name: 'Uganda', image: 'flags/ug.png'},
+    {id: 'um', name: 'United States Minor Outlying Islands', image: 'flags/um.png'},
+    {id: 'us', name: 'United States of America', image: 'flags/us.png'},
+    {id: 'uy', name: 'Uruguay', image: 'flags/uy.png'},
+    {id: 'uz', name: 'Uzbekistan', image: 'flags/uz.png'},
+    {id: 'va', name: 'Vatican City', image: 'flags/va.png'},
+    {id: 'vc', name: 'Saint Vincent and the Grenadines', image: 'flags/vc.png'},
+    {id: 've', name: 'Venezuela', image: 'flags/ve.png'},
+    {id: 'vg', name: 'British Virgin Islands', image: 'flags/vg.png'},
+    {id: 'vi', name: 'US Virgin Islands', image: 'flags/vi.png'},
+    {id: 'vn', name: 'Vietnam', image: 'flags/vn.png'},
+    {id: 'vu', name: 'Vanuatu', image: 'flags/vu.png'},
+    {id: 'wf', name: 'Wallis and Futuna', image: 'flags/wf.png'},
+    {id: 'ws', name: 'Samoa', image: 'flags/ws.png'},
+    {id: 'ye', name: 'Yemen', image: 'flags/ye.png'},
+    {id: 'yt', name: 'Mayotte', image: 'flags/yt.png'},
+    {id: 'za', name: 'South Africa', image: 'flags/za.png'},
+    {id: 'zm', name: 'Zambia', image: 'flags/zm.png'},
+    {id: 'zw', name: 'Zimbabwe', image: 'flags/zw.png'}
+];
+
+var myPicker = new picker.Picker({
+    items: items
+});
+
+var pickerUI = new PickerUI(myPicker, {
+    elements: {
+        pick: "#pick",
+        pass: "#pass",
+        undo: "#undo",
+        redo: "#redo",
+        evaluating: "#evaluating",
+        favorites: "#favorites"
+    }
+});
+
+pickerUI.initialize();
+
+/* Sortable favorites - you can safely remove this, and the Sortable.min.js script, if you don't want to be able to sort your favorite list. */
+var sortable = new Sortable(pickerUI.elem.favorites.get(0), {
+    draggable: '.item',
+    animation: 100,
+    onStart: function() {
+        pickerUI.elem.favorites.addClass("sorting");
+    },
+    onEnd: function() {
+        pickerUI.elem.favorites.removeClass("sorting");
+    },
+    onUpdate: function() {
+        myPicker.setFavorites(pickerUI.elem.favorites.children().map(function() {
+            return pickerUI.getItem(this);
+        }).get());
+        pickerUI.update(true);
+    }
+});
+/* End sortable favorites */
+</script>
+</body>
+</html>
